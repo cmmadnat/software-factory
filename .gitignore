@@ -1,0 +1,9 @@
+node_modules/
+runs/
+.env
+*.db
+
+# Local, machine-specific
+factory.config.json
+PLAN.md
+.lavish/

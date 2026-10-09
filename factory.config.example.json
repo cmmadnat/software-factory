@@ -1,0 +1,65 @@
+{
+  "budget": {
+    "perTurnUsd": 0.5,
+    "perAgentUsd": 5,
+    "perBatchUsd": 20,
+    "usdPerAiu": 0.01
+  },
+  "maxParallel": 3,
+  "maxTurnsPerAgent": 40,
+  "jira": {
+    "site": "your-site.atlassian.net",
+    "mcpUrl": "https://mcp.atlassian.com/v1/mcp"
+  },
+  "targets": {
+    "acme-api": {
+      "repo": "~/work/acme-api",
+      "host": "gitlab",
+      "baseBranch": "Staging",
+      "setup": [
+        "ln -sfn {repo}/.venv .venv"
+      ],
+      "gate": {
+        "quick": [
+          ".venv/bin/pytest -q --maxfail=100000 {changedTests}"
+        ],
+        "full": [
+          ".venv/bin/pytest -q --maxfail=100000 tests"
+        ]
+      }
+    },
+    "acme-app": {
+      "repo": "~/work/acme-app",
+      "host": "github",
+      "baseBranch": "main",
+      "setup": [
+        "npm ci --no-audit --no-fund"
+      ],
+      "gate": {
+        "quick": [
+          "npm run build"
+        ],
+        "full": [
+          "npm run build",
+          "npx ng test --watch=false --browsers=ChromeHeadless {changedSpecs}"
+        ]
+      }
+    },
+    "software-factory": {
+      "repo": "~/work/software-factory",
+      "host": "local",
+      "baseBranch": "main",
+      "setup": [
+        "npm ci --no-audit --no-fund"
+      ],
+      "gate": {
+        "quick": [
+          "npm test"
+        ],
+        "full": [
+          "npm test"
+        ]
+      }
+    }
+  }
+}

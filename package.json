@@ -1,0 +1,29 @@
+{
+  "name": "software-factory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "smoke": "tsx smoke/session-zero.ts",
+    "typecheck": "tsc",
+    "test": "node --import tsx --test test/*.test.ts",
+    "smoke:classify": "tsx smoke/classify.ts",
+    "smoke:intake": "tsx smoke/intake.ts",
+    "start": "tsx src/main.ts",
+    "smoke:runner": "tsx smoke/runner.ts",
+    "smoke:parallel": "tsx smoke/parallel.ts"
+  },
+  "dependencies": {
+    "@github/copilot-sdk": "^1.0.18",
+    "@openrouter/sdk": "^1.4.25",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

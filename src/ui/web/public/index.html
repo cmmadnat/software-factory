@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en" data-theme="tweakcn-light-green">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Factory</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<style>
+  [data-theme="tweakcn-light-green"] {
+    color-scheme: light;
+    --color-base-100: oklch(0.9711 0.0074 80.7211);
+    --color-base-200: oklch(0.9370 0.0142 74.4218);
+    --color-base-300: oklch(0.8805 0.0208 74.6428);
+    --color-base-content: oklch(0.3000 0.0358 30.2042);
+    --color-primary: oklch(0.5234 0.1347 144.1672);
+    --color-primary-content: oklch(1 0 0);
+    --color-secondary: oklch(0.9571 0.0210 147.6360);
+    --color-secondary-content: oklch(0.4254 0.1159 144.3078);
+    --color-accent: oklch(0.8952 0.0504 146.0366);
+    --color-accent-content: oklch(0.4254 0.1159 144.3078);
+    --color-neutral: oklch(0.4254 0.1159 144.3078);
+    --color-neutral-content: oklch(0.9711 0.0074 80.7211);
+    --color-info: oklch(74% .16 232.661);
+    --color-info-content: oklch(29% .066 243.157);
+    --color-success: oklch(76% .177 163.223);
+    --color-success-content: oklch(37% .077 168.94);
+    --color-warning: oklch(82% .189 84.429);
+    --color-warning-content: oklch(41% .112 45.904);
+    --color-error: oklch(0.5386 0.1937 26.7249);
+    --color-error-content: oklch(1 0 0);
+    --radius-selector: 0.5rem;
+    --radius-field: 0.5rem;
+    --radius-box: 0.5rem;
+    --border: 1px;
+    --depth: 0;
+    --noise: 0;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  :where(.grid, .flex) > * { min-width: 0; }
+  :where(p, li, td, th, .badge, pre) { overflow-wrap: anywhere; }
+  .branch-label { display: block; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal }
+  body { background: var(--color-base-100); color: var(--color-base-content); }
+  .thumb { width: 72px; height: 46px; object-fit: cover; border-radius: 6px }
+  .col { background: color-mix(in oklab, var(--color-base-200) 80%, transparent); border-radius: 10px; padding: 8px; min-height: 120px }
+  .kc { background: var(--color-base-100); border: 1px solid color-mix(in oklab, var(--color-base-content) 15%, transparent); border-radius: 8px; padding: 8px; font-size: 12px; cursor: pointer; text-align: left; width: 100% }
+  .kc:hover, .kc:focus-visible { border-color: var(--color-primary) }
+  .kc.needs { border-color: var(--color-warning) }
+  .kc.open { outline: 2px solid var(--color-primary) }
+  #panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(620px, 100vw); z-index: 40; overflow-y: auto; overflow-wrap: anywhere; box-shadow: -8px 0 24px rgb(0 0 0 / .15) }
+  #panel > * { min-width: 0 }
+  pre.summary { white-space: pre-wrap; font-size: 12px }
+</style>
+</head>
+<body>
+<div class="navbar bg-base-200 px-4 gap-2">
+  <a class="text-lg font-bold flex-1" href="/">factory</a>
+  <span id="total-spend" class="text-sm opacity-70"></span>
+  <button id="open-repos" class="btn btn-sm btn-ghost">Repos</button>
+</div>
+
+<dialog id="repos" class="modal">
+  <div class="modal-box max-w-3xl space-y-4">
+    <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="Close">✕</button></form>
+    <h2 class="text-lg font-semibold">Repos</h2>
+    <div class="overflow-x-auto"><table class="table table-xs"><thead><tr><th>name</th><th>path</th><th>base</th><th>host</th><th>quick gate</th></tr></thead><tbody id="repo-rows"></tbody></table></div>
+    <div class="divider my-0">Add a repo</div>
+    <div class="join w-full">
+      <input id="repo-path" class="input input-sm join-item w-full font-mono" placeholder="~/work/some-repo (a local checkout with an origin remote)">
+      <button id="repo-inspect" class="btn btn-sm join-item">Read repo</button>
+    </div>
+    <div id="repo-error" role="alert" class="alert alert-error alert-soft text-sm py-2" hidden></div>
+    <form id="repo-form" class="grid grid-cols-1 md:grid-cols-2 gap-3" hidden>
+      <label class="fieldset"><span class="fieldset-legend">name</span><input name="name" class="input input-sm w-full" required></label>
+      <label class="fieldset"><span class="fieldset-legend">base branch (work starts here; MRs target it)</span><select name="baseBranch" class="select select-sm w-full"></select></label>
+      <label class="fieldset"><span class="fieldset-legend">host</span><select name="host" class="select select-sm w-full"><option value="gitlab">gitlab (glab)</option><option value="github">github (gh)</option><option value="local">local (no remote)</option></select></label>
+      <label class="fieldset"><span class="fieldset-legend">path</span><input name="repo" class="input input-sm w-full font-mono" readonly></label>
+      <label class="fieldset md:col-span-2"><span class="fieldset-legend">setup: run once in each fresh worktree, one command per line</span><textarea name="setup" rows="2" class="textarea textarea-sm w-full font-mono"></textarea></label>
+      <label class="fieldset"><span class="fieldset-legend">quick gate (after each agent turn)</span><textarea name="quick" rows="2" class="textarea textarea-sm w-full font-mono"></textarea></label>
+      <label class="fieldset"><span class="fieldset-legend">full gate</span><textarea name="full" rows="2" class="textarea textarea-sm w-full font-mono"></textarea></label>
+      <ul id="repo-notes" class="md:col-span-2 text-xs opacity-70 list-disc pl-5"></ul>
+      <p class="md:col-span-2 text-xs opacity-60">Placeholders: <code>{repo}</code> is the main checkout, <code>{changedTests}</code> is the pytest files a row touched, <code>{changedSpecs}</code> is the spec globs for the folders a row touched. Gates pass when there are no new failures compared with the base branch.</p>
+      <div class="md:col-span-2 flex justify-end"><button class="btn btn-primary btn-sm" type="submit">Add repo</button></div>
+    </form>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<dialog id="file-diff" class="modal">
+  <div class="modal-box max-w-5xl w-11/12 space-y-3">
+    <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" aria-label="Close">✕</button></form>
+    <h2 id="file-diff-title" class="text-base font-semibold font-mono break-all pr-8"></h2>
+    <p class="text-xs opacity-60">Diff on the session branch against the base branch</p>
+    <pre id="file-diff-body" class="whitespace-pre overflow-auto max-h-[70vh] text-xs font-mono bg-base-200 rounded-box p-3"></pre>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<main class="max-w-[1500px] mx-auto px-4 py-5 space-y-4">
+  <!-- Intake: every paste becomes cards in the Intake column -->
+  <details id="intake" class="collapse collapse-arrow bg-base-200" open>
+    <summary class="collapse-title font-semibold">Add work <span class="text-sm font-normal opacity-70">— Jira keys, text, or screenshots (⌘V / drop). Each item becomes a card.</span></summary>
+    <div class="collapse-content space-y-3">
+      <div id="dropzone" tabindex="0" class="relative border-2 border-dashed border-base-300 rounded-box p-3 focus:border-primary outline-none">
+        <textarea id="paste-text" class="textarea w-full" rows="2" placeholder="Type or paste here, then Add (⌘↵). Type @ to tag a repo. Screenshots can be pasted anywhere on the page."></textarea>
+        <ul id="mention-menu" class="menu bg-base-100 rounded-box shadow absolute left-3 right-3 z-20 max-h-48 overflow-y-auto flex-nowrap hidden"></ul>
+        <div class="flex justify-end mt-2"><button id="add-text" class="btn btn-sm">Add</button></div>
+      </div>
+      <ul id="entries" class="list bg-base-100 rounded-box"></ul>
+      <div class="flex items-center gap-3">
+        <button id="plan" class="btn btn-primary btn-sm" disabled>Add to board →</button>
+        <span id="plan-status" class="text-sm opacity-70"></span>
+      </div>
+    </div>
+  </details>
+
+  <!-- My Jira: triage issues assigned to me -->
+  <details id="jira" class="collapse collapse-arrow bg-base-200">
+    <summary class="collapse-title font-semibold">My Jira <span class="text-sm font-normal opacity-70">— assigned to you: add to the board, dismiss, or comment.</span></summary>
+    <div class="collapse-content space-y-3">
+      <div class="flex items-center gap-3">
+        <button id="jira-refresh" class="btn btn-sm">Refresh</button>
+        <span id="jira-status" class="text-sm opacity-70"></span>
+      </div>
+      <ul id="jira-list" class="list bg-base-100 rounded-box"></ul>
+    </div>
+  </details>
+
+  <div id="warnings" class="space-y-2"></div>
+
+  <!-- Kanban: one card per session -->
+  <section id="kanban" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3" aria-label="Sessions"></section>
+  <details id="closed-box" class="text-sm opacity-80" hidden>
+    <summary class="cursor-pointer"></summary>
+    <ul id="closed" class="mt-2 space-y-1"></ul>
+  </details>
+</main>
+
+<aside id="panel" class="bg-base-100 p-4 space-y-4" hidden aria-label="Card detail"></aside>
+<div id="toast" class="toast toast-end z-50"></div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>
